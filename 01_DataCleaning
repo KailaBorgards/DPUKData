@@ -1,0 +1,457 @@
+############ Data Cleaning #############
+#######################################
+
+### Removing data of follow-ups / Keep only baseline data
+datalsb <- datals %>%
+  filter(NACCVNUM == 1)
+nrow(datalsb)
+
+### inspect data
+summary(datalsb)
+describe(datalsb)
+class(datalsb)
+datalsbc <- as.data.frame(datalsb)
+
+
+##### ELIMINATING VARIABLES
+## Check that all variables are numeric
+names(datalsb)[!sapply(datalsb, is.numeric)]
+datalsbc <- datalsb[, !c("VISITDATE", "NACCVNUM"), with = FALSE]
+sapply(datalsbc, class)
+datalsbc <- as.data.frame(datalsb)
+
+#### Remove variables with 0 variance
+which(sapply(datalsbc, function(x) var(x, na.rm = T) == 0)) ## None
+
+'zero_var <- sapply(datals, function (x) {
+  x <- x[!is.na(x)]
+  length(unique(x)) <= 1
+})
+
+names(df)[zero_var]
+
+dfnew <- df[, !zero_var] ## might become relevant for imaging if not, delete'
+
+#### Remove variables with too many NAs #####
+## Check for NAs percentage
+anyNA(datalsbc) #0 NAs
+
+
+#### RECODING VARIABLES
+'Higher values will refelct unhealthier habits // Lower healthier // So LS will become risk factors
+'
+
+### Education Variables
+datalsbc$EDUC[datalsbc$EDUC == 99] <- NA
+datalsbc$EDUCnew <- datalsbc$EDUC * -1
+
+datalsbc$NACCEDULVL[datalsbc$NACCEDULVL == 9] <- NA
+datalsbc$NACCEDULVLnew <- datalsbc$NACCEDULVL * -1
+
+### Physical Exercise Variables
+datalsbc$EXRTIME[datalsbc$EXRTIME == 9] <- NA
+datalsbc$EXRTIME[datalsbc$EXRTIME == -4] <- NA
+datalsbc$EXRTIMEnew <- datalsbc$EXRTIME * -1
+
+### Hypertension Variables
+# EXCLUDE the below
+datalsbc$NACCAHTN[datalsbc$NACCAHTN == -4] <- NA ## Higher means they used medication for hypertension (not sure if this is healthier, because treated or unhealthier because condiditon present)
+
+HYPERTEN_mapping <- c("0" = 0, "1" = 2, "2" = 1, "9" = NA, "-4" = NA)
+datalsbc$HYPERTENnew <- unname(
+  HYPERTEN_mapping[as.character(datalsbc$HYPERTEN)]
+)
+
+HYPERT_map <- c("0" = 0, "1" = 1, "8" = NA, "-4" = NA)
+datalsbc$HYPERTnew <- unname(
+  HYPERT_map[as.character(datalsbc$HYPERT)]
+)
+
+HYPERTAGE_map <- c("888" = 120, "999" = NA, "-4" = NA)
+datalsbc$HYPERTAGEnew2 <- ifelse(
+  as.character(datalsbc$HYPERTAGE) %in% names(HYPERTAGE_map),
+  HYPERTAGE_map[as.character(datalsbc$HYPERTAGE)],
+  datalsbc$HYPERTAGE)
+datalsbc$HYPERTAGEnew <- datalsbc$HYPERTAGEnew2 * -1
+
+datalsbc$NACCBPSYSL[datalsbc$NACCBPSYSL == 888] <- NA
+datalsbc$NACCBPSYSL[datalsbc$NACCBPSYSL == -4] <- NA
+
+datalsbc$NACCBPSYSR[datalsbc$NACCBPSYSR == 888] <- NA
+datalsbc$NACCBPSYSR[datalsbc$NACCBPSYSR == -4] <- NA
+
+datalsbc$NACCBPDIAL[datalsbc$NACCBPDIAL == 888] <- NA
+datalsbc$NACCBPDIAL[datalsbc$NACCBPDIAL == -4] <- NA
+
+datalsbc$NACCBPDIAR[datalsbc$NACCBPDIAR == 888] <- NA
+datalsbc$NACCBPDIAR[datalsbc$NACCBPDIAR == -4] <- NA
+
+datalsbc$BPSYS[datalsbc$BPSYS== 888] <- NA
+datalsbc$BPSYS[datalsbc$BPSYS== -4] <- NA
+datalsbc$BPSYS[datalsbc$BPSYS== 777] <- NA
+
+datalsbc$BPDIAS[datalsbc$BPDIAS== 888] <- NA
+datalsbc$BPDIAS[datalsbc$BPDIAS== -4] <- NA
+datalsbc$BPDIAS[datalsbc$BPDIAS== 777] <- NA
+
+datalsbc$HXHYPER[datalsbc$BPDHXHYPERIAS== -4] <- NA
+
+### Diabetes Variables
+# EXCLUDE NACCBMD because interpretability is ambiguous
+
+DIABETES_mapping <- c("0" = 0, "1" = 2, "2" = 1, "9" = NA, "-4" = NA)
+datalsbc$DIABETESnew <- unname(
+  DIABETES_mapping[as.character(datalsbc$DIABETES)]
+)
+
+'EXCLUDE DIABETES, DIABINS, DIABMEDS, DIABGLP1, DIABRECACT, DIABDIET, DIABUNK for now because unclear if a certain treatment is better than others, and if "no" means no treatment or just, not of that type'
+
+datalsbc$DIABAGE[datalsbc$DIABAGE == 999] <- NA
+datalsbc$DIABAGE[datalsbc$DIABAGE == 888] <- NA
+datalsbc$DIABAGE[datalsbc$DIABAGE == -4] <- NA
+datalsbc$DIABAGEnew <- datalsbc$DIABAGE * -1
+
+### Cholesterol Variables
+# Exclude NACCLIPL due to ambiguous interpretation
+HYPERCHO_mapping <- c("0" = 0, "1" = 2, "2" = 1, "9" = NA, "-4" = NA)
+datalsbc$HYPERCHOnew <- unname(
+  HYPERCHO_mapping[as.character(datalsbc$HYPERCHO)]
+)
+datalsbc$HYPERCHOnew <- as.numeric(datalsbc$HYPERCHOnew)
+
+datalsbc$HYPCHOL[datalsbc$HYPCHOL == 8] <- NA
+datalsbc$HYPCHOL[datalsbc$HYPCHOL == -4] <- NA
+
+HYPERCHAGE_map <- c("888" = 120, "999" = NA, "-4" = NA)
+datalsbc$HYPERCHAGEnew2 <- ifelse(
+  as.character(datalsbc$HYPERCHAGE) %in% names(HYPERCHAGE_map),
+  HYPERCHAGE_map[as.character(datalsbc$HYPERCHAGE)],
+  datalsbc$HYPERCHAGE)
+datalsbc$HYPERCHAGEnew2 <- datalsbc$HYPERCHAGEnew * -1 #Assupmtion that the younger at diagnosis the worse (Wendling, 2020)
+
+### Obesity Variables
+# Exclude Height and weight because NACCBMI exists as a marker for obesity
+
+datalsbc$NACCBMI[datalsbc$NACCBMI == 888.8] <- NA
+datalsbc$NACCBMI[datalsbc$NACCBMI == -4] <- NA
+
+datalsbc$NACCWAIST[datalsbc$NACCWAIST == 888] <- NA
+datalsbc$NACCWAIST[datalsbc$NACCWAIST == -4] <- NA
+
+datalsbc$NACCHIP[datalsbc$NACCHIP == 888] <- NA
+datalsbc$NACCHIP[datalsbc$NACCHIP == -4] <- NA
+
+
+### Social Isolation Variables
+# Maristat is marital status consider value of item
+'Order of social isolation is now, Marries, living as married partner, seperated, divorced, widowed, never married; Rationale: As long as they live they are still less isolated than in death, but maybe more impacted by wellbeing'
+MARISTAT_mapping <- c("1" = 1, "6" = 2, "4" = 3, "3" = 4, "2" = 5, "5" = 6,"9"=NA)
+datalsbc$MARISTATnew <- unname(
+  MARISTAT_mapping[as.character(datalsbc$MARISTAT)]
+)
+
+NACCLIVS_mapping <- c("2" = 1, "3" = 2, "4" = 3, "5" = 4, "1" = 5,"9"=NA)
+datalsbc$NACCLIVSnew <- unname(
+  NACCLIVS_mapping[as.character(datalsbc$NACCLIVS)]
+)
+
+#MISSPEOPLE is "Do you miss having people around" Difficult to disentangle if it is loneliness or social isolation
+datalsbc$MISSPEOPLE[datalsbc$MISSPEOPLE == 8] <- NA
+datalsbc$MISSPEOPLE[datalsbc$MISSPEOPLE == -4] <- NA
+
+# Also worth discussing FRIENDS, ABANDONDED, CLOSEFRND
+datalsbc$FRIENDS[datalsbc$FRIENDS == 8] <- NA
+datalsbc$FRIENDS[datalsbc$FRIENDS == -4] <- NA
+
+datalsbc$ABANDONDED[datalsbc$ABANDONDED == 8] <- NA
+datalsbc$ABANDONDED[datalsbc$ABANDONDED == -4] <- NA
+
+datalsbc$CLOSEFRND[datalsbc$CLOSEFRND == 8] <- NA
+datalsbc$CLOSEFRND[datalsbc$CLOSEFRND == -4] <- NA
+
+PARENTCOMM_mapping <- c("5" = 1, "4" = 2, "3" = 3, "2" = 4, "1" = 5,"0" = 6, "8"=NA,"-4"=NA)
+datalsbc$PARENTCOMMnew <- unname(
+  PARENTCOMM_mapping[as.character(datalsbc$PARENTCOMM)]
+)
+
+CHILDCOMM_mapping <- c("5" = 1, "4" = 2, "3" = 3, "2" = 4, "1" = 5,"0" = 6, "8"=NA,"-4"=NA)
+datalsbc$CHILDCOMMnew <- unname(
+  CHILDCOMM_mapping[as.character(datalsbc$CHILDCOMM)]
+)
+
+FRIENDCOMM_mapping <- c("5" = 1, "4" = 2, "3" = 3, "2" = 4, "1" = 5,"0" = 6, "8"=NA,"-4"=NA)
+datalsbc$FRIENDCOMMnew <- unname(
+  FRIENDCOMM_mapping[as.character(datalsbc$FRIENDCOMM)]
+)
+
+PARTICIPATE_mapping <- c("5" = 1, "4" = 2, "3" = 3, "2" = 4, "1" = 5,"0" = 6, "8"=NA,"-4"=NA)
+datalsbc$PARTICIPATEnew <- unname(
+  PARTICIPATE_mapping[as.character(datalsbc$PARTICIPATE)]
+)
+
+### Smoking Variables
+
+datalsbc$TOBAC100[datalsbc$TOBAC100 == 9] <- NA
+datalsbc$TOBAC100[datalsbc$TOBAC100 == -4] <- NA
+
+datalsbc$SMOKYRS[datalsbc$SMOKYRS == 99] <- NA
+datalsbc$SMOKYRS[datalsbc$SMOKYRS == 88] <- NA
+datalsbc$SMOKYRS[datalsbc$SMOKYRS == -4] <- NA
+
+datalsbc$PACKSPER[datalsbc$PACKSPER == 9] <- NA
+datalsbc$PACKSPER[datalsbc$PACKSPER == 8] <- NA
+datalsbc$PACKSPER[datalsbc$PACKSPER == -4] <- NA
+
+datalsbc$TOBAC30[datalsbc$TOBAC30 == 9] <- NA
+datalsbc$TOBAC30[datalsbc$TOBAC30 == 8] <- NA
+datalsbc$TOBAC30[datalsbc$TOBAC30 == -4] <- NA
+
+'QUITSMOK for now excluded, because it would penalize those that never smoked in the first place'
+
+### Alcohol Variables
+
+datalsbc$ALCFREQYR[datalsbc$ALCFREQYR == 9] <- NA
+datalsbc$ALCFREQYR[datalsbc$ALCFREQYR == -4] <- NA
+
+datalsbc$ALCOCCAS[datalsbc$ALCOCCAS == 9] <- NA
+datalsbc$ALCOCCAS[datalsbc$ALCOCCAS == -4] <- NA
+
+datalsbc$ALCFREQ[datalsbc$ALCFREQ == 9] <- NA
+datalsbc$ALCFREQ[datalsbc$ALCFREQ == 8] <- NA
+datalsbc$ALCFREQ[datalsbc$ALCFREQ == -4] <- NA
+
+'Excluding ALCDRINKS because it would penalize those that never drink alcohol'
+
+datalsbc$ALCBINGE[datalsbc$ALCBINGE == 9] <- NA
+datalsbc$ALCBINGE[datalsbc$ALCBINGE == 8] <- NA
+datalsbc$ALCBINGE[datalsbc$ALCBINGE == -4] <- NA
+
+ALCOHOL_mapping <- c("0" = 1, "2" = 2, "1" = 3, "9" = NA, "-4"=NA)
+datalsbc$ALCOHOLnew <- unname(
+  ALCOHOL_mapping[as.character(datalsbc$ALCOHOL)]
+)
+
+
+### Depression Variables
+'Excluding NACCADEP, because unclear if no means no depression or untreated depression
+'
+
+datalsbc$NACCADEP[datalsbc$NACCADEP == 9] <- NA
+datalsbc$NACCADEP[datalsbc$NACCADEP == -4] <- NA
+
+# Assumption that inactive is worse than active, worth discussing, because it could mean younger onset or now healthy
+MAJORDEP_mapping <- c("0" = 1, "2" = 2, "1" = 3, "9" = NA, "-4"=NA)
+datalsbc$MAJORDEPnew <- unname(
+  MAJORDEP_mapping[as.character(datalsbc$MAJORDEP)]
+)
+
+OTHERDEP_mapping <- c("0" = 1, "2" = 2, "1" = 3, "9" = NA, "-4"=NA)
+datalsbc$OTHERDEPnew <- unname(
+  OTHERDEP_mapping[as.character(datalsbc$OTHERDEP)]
+)
+
+# Discuss DEP2YRS and DEPOTHR because unclear if 0 means healthy or diagnosed at different time, but 2 x1 is definitely worse than 1x1 than 0x1
+datalsbc$DEP2YRS[datalsbc$DEP2YRS == 9] <- NA
+datalsbc$DEP2YRS[datalsbc$DEP2YRS == -4] <- NA
+
+datalsbc$DEPOTHR[datalsbc$DEPOTHR == 9] <- NA
+datalsbc$DEPOTHR[datalsbc$DEPOTHR == -4] <- NA
+
+## Exclusion of DEPD, DEPDSEV because unclear if 0 means that sth is healthy or not present at specified time period
+
+datalsbc$NACCGDS[datalsbc$NACCGDS == 88] <- NA
+datalsbc$NACCGDS[datalsbc$NACCGDS == -4] <- NA
+
+DEPTREAT_mapping <- c("0" = 2, "1" = 1, "8" = 0, "-4"=NA)
+datalsbc$DEPTREATnew <- unname(
+  DEPTREAT_mapping[as.character(datalsbc$DEPTREAT)]
+)
+
+### Anxiety Variables
+'Excluding NACCAANX, because unclear if no means no anxiety or untreated anxiety
+Excluding for now, because individual diagnoses will likely not correlate with one another and ANX. and ANXSEV refer to anxiety in last month'
+NACCANX_mapping <- c("0" = 1, "2" = 2, "1" = 3, "9" = NA, "-4"=NA)
+datalsbc$NACCANXnew <- unname(
+  NACCANX_mapping[as.character(datalsbc$NACCANX)]
+)
+
+ANXIETY_mapping <- c("0" = 1, "2" = 2, "1" = 3, "9" = NA, "-4"=NA)
+datalsbc$ANXIETYnew <- unname(
+  ANXIETY_mapping[as.character(datalsbc$ANXIETY)]
+)
+
+### TBI Variables 
+datalsbc$HEADIMP[datalsbc$HEADIMP == 9] <- NA
+datalsbc$HEADIMP[datalsbc$HEADIMP == -4] <- NA
+
+datalsbc$IMPYEARS[datalsbc$IMPYEARS == 888] <- NA
+datalsbc$IMPYEARS[datalsbc$IMPYEARS == -4] <- NA
+datalsbc$IMPYEARS[datalsbc$IMPYEARS == 999] <- NA
+
+datalsbc$HEADINJURY[datalsbc$HEADINJURY == 9] <- NA
+datalsbc$HEADINJURY[datalsbc$HEADINJURY == -4] <- NA
+
+## Discuss if HEADINKUNC and HEADINJONC should be kept as they indicate severity rather than presence
+datalsbc$HEADINJUNC[datalsbc$HEADINJUNC == 8] <- NA
+datalsbc$HEADINJUNC[datalsbc$HEADINJUNC == -4] <- NA
+datalsbc$HEADINJUNC[datalsbc$HEADINJUNC == 9] <- NA
+
+datalsbc$HEADINJCON[datalsbc$HEADINJCON == 8] <- NA
+datalsbc$HEADINJCON[datalsbc$HEADINJCON == -4] <- NA
+datalsbc$HEADINJCON[datalsbc$HEADINJCON == 9] <- NA
+
+datalsbc$HEADINJNUM[datalsbc$HEADINJNUM == 9] <- NA
+datalsbc$HEADINJNUM[datalsbc$HEADINJNUM == -4] <- NA
+
+# Exclude FIRSTTBI and LASTTBI because unclear how timing translates to negative consequences
+
+datalsbc$NACCTBI[datalsbc$NACCTBI == 9] <- NA
+datalsbc$NACCTBI[datalsbc$NACCTBI == -4] <- NA
+
+# Assumption that remote is better than active
+TBI_mapping <- c("0" = 1, "2" = 2, "1" = 3, "9" = NA, "-4"=NA)
+datalsbc$TBInew <- unname(
+  TBI_mapping[as.character(datalsbc$TBI)]
+)
+
+datalsbc$TBIBRIEF[datalsbc$HEADIMP == 9] <- NA
+datalsbc$TBIBRIEF[datalsbc$HEADIMP == -4] <- NA
+
+TRAUMBRF_mapping <- c("0" = 1, "2" = 2, "1" = 3, "9" = NA, "-4"=NA)
+datalsbc$TRAUMBRFnew <- unname(
+  TRAUMBRF_mapping[as.character(datalsbc$TRAUMBRF)]
+)
+
+datalsbc$TBIEXTEN[datalsbc$TBIEXTEN == 9] <- NA
+datalsbc$TBIEXTEN[datalsbc$TBIEXTEN == -4] <- NA
+
+TRAUMEXT_mapping <- c("0" = 1, "2" = 2, "1" = 3, "9" = NA, "-4"=NA)
+datalsbc$TRAUMEXTnew <- unname(
+  TRAUMEXT_mapping[as.character(datalsbc$TRAUMEXT)]
+)
+
+datalsbc$TBIWOLOS[datalsbc$TBIWOLOS == 9] <- NA
+datalsbc$TBIWOLOS[datalsbc$TBIWOLOS == -4] <- NA
+
+TRAUMCHR_mapping <- c("0" = 1, "2" = 2, "1" = 3, "9" = NA, "-4"=NA)
+datalsbc$TRAUMCHRnew <- unname(
+  TRAUMCHR_mapping[as.character(datalsbc$TRAUMCHR)]
+)
+# Exclude TBI Year because unclear if more recent is worse or not
+
+### Sleeping variables
+
+datalsbc$SLEEPAP[datalsbc$SLEEPAP == 8] <- NA
+datalsbc$SLEEPAP[datalsbc$SLEEPAP == -4] <- NA
+
+CPAP_mapping <- c("8" = 1, "2" = 2, "1" = 3, "0" = 4, "9" = NA, "-4"=NA)
+datalsbc$CPAPnew <- unname(
+  CPAP_mapping[as.character(datalsbc$CPAP)]
+)
+
+APNEAORAL_mapping <- c("8" = 1, "2" = 2, "1" = 3, "0" = 4, "9" = NA, "-4"=NA)
+datalsbc$APNEAORALnew <- unname(
+  APNEAORAL_mapping[as.character(datalsbc$APNEAORAL)]
+)
+
+RBD_mapping <- c("2" = 2, "1" = 3, "0" = 1, "9" = NA, "-4"=NA)
+datalsbc$RBDnew <- unname(
+  RBD_mapping[as.character(datalsbc$RBD)]
+)
+
+INSOMN_mapping <- c("2" = 2, "1" = 3, "0" = 1, "9" = NA, "-4"=NA)
+datalsbc$INSOMNnew <- unname(
+  INSOMN_mapping[as.character(datalsbc$INSOMN)]
+)
+
+#Exclude REMDIS and HYPOSOM and SLEEPOTH because it would be colinear to RBD/INSOMN/ SLEEPOTH but RBD/INSOMN/ SLEEPOTH gives more information
+
+OTHSLEEP_mapping <- c("2" = 2, "1" = 3, "0" = 1, "9" = NA, "-4"=NA)
+datalsbc$OTHSLEEPnew <- unname(
+  OTHSLEEP_mapping[as.character(datalsbc$OTHSLEEP)]
+)
+
+### Hearing Variables
+
+HEARING_mapping <- c("0" = 1, "1" = 0,"9" = NA, "-4"=NA)
+datalsbc$HEARINGnew <- unname(
+  HEARING_mapping[as.character(datalsbc$HEARING)]
+)
+## Exclude HEARAID because unclear if No means healthy hearing or untreated
+# but may be necessary due to a too small number of indicators elsewise
+
+# Worth discussing HEARWAID
+HEARWAID_mapping <- c("0" = 1, "1" = 0, "8" = NA, "9" = NA, "-4"=NA)
+datalsbc$HEARWAIDnew <- unname(
+  HEARWAID_mapping[as.character(datalsbc$HEARWAID)]
+)
+
+### Vision Variables
+
+VISION_mapping <- c("0" = 1, "1" = 0,"9" = NA, "-4"=NA)
+datalsbc$VISIONnew <- unname(
+  VISION_mapping[as.character(datalsbc$VISION)]
+)
+
+# VISCORR excluded due to ambiguous interpretation
+VISWCORR_mapping <- c("0" = 1, "1" = 0, "8" = NA, "9" = NA, "-4"=NA)
+datalsbc$VISWCORRnew <- unname(
+  VISWCORR_mapping[as.character(datalsbc$VISWCORR)]
+)
+
+
+### Cognition Variables
+## DECCLIN excluded due to ambiguous coding
+datalsbc$DECCLCOG[datalsbc$DECCLCOG == -4] <- NA
+
+datalsbc$NACCMMSE[datalsbc$NACCMMSE == 88] <- NA
+datalsbc$NACCMMSE[datalsbc$NACCMMSE == 95] <- NA
+datalsbc$NACCMMSE[datalsbc$NACCMMSE == 96] <- NA
+datalsbc$NACCMMSE[datalsbc$NACCMMSE == 97] <- NA
+datalsbc$NACCMMSE[datalsbc$NACCMMSE == 98] <- NA
+datalsbc$NACCMMSE[datalsbc$NACCMMSE == -4] <- NA
+datalsbc$NACCMMSEnew <- datalsbc$NACCMMSE*-1
+
+datalsbc$NACCMOCA[datalsbc$NACCMOCA == 88] <- NA
+datalsbc$NACCMOCA[datalsbc$NACCMOCA == 99] <- NA
+datalsbc$NACCMOCA[datalsbc$NACCMOCA == -4] <- NA
+datalsbc$NACCMOCAnew <- datalsbc$NACCMOCA*-1
+
+datalsbc$NACCMOCB[datalsbc$NACCMOCB == 88] <- NA
+datalsbc$NACCMOCB[datalsbc$NACCMOCB == 99] <- NA
+datalsbc$NACCMOCB[datalsbc$NACCMOCB == -4] <- NA
+datalsbc$NACCMOCBnew <- datalsbc$NACCMOCB*-1
+
+NORMCOG_mapping <- c("0" = 1, "1" = 0)
+datalsbc$NORMCOGnew <- unname(
+  NORMCOG_mapping[as.character(datalsbc$NORMCOG)]
+)
+
+## DEMENTED okay as is 
+
+datalsbc$MCI[datalsbc$MCI == -4] <- NA
+
+datalsbc$NACCUDSD[datalsbc$NACCUDSD == 8] <- NA
+
+#### New Subset
+datalsnew <- subset(datalsbc, select = c(NACCID, NACCAGE, NACCSEX,
+                                        EDUCnew, NACCEDULVLnew,
+                                        EXRTIMEnew,
+                                        HYPERTENnew, HYPERTnew, HYPERTAGEnew, NACCBPSYSL, NACCBPSYSR, NACCBPDIAL, NACCBPDIAR, BPSYS, BPDIAS, HXHYPER,
+                                        DIABETESnew, DIABAGE,
+                                        HYPERCHOnew, HYPCHOL, HYPERCHAGEnew2,
+                                        NACCBMI, NACCWAIST, NACCHIP,
+                                        MARISTATnew, NACCLIVSnew, MISSPEOPLE, FRIENDS, ABANDONED, CLOSEFRND, PARENTCOMMnew, CHILDCOMMnew, FRIENDCOMMnew, PARTICIPATEnew,
+                                        TOBAC100, SMOKYRS, PACKSPER, TOBAC30,
+                                        ALCFREQYR, ALCOCCAS, ALCFREQ, ALCBINGE, ALCOHOLnew,
+                                        NACCDEP, MAJORDEPnew, OTHERDEPnew, DEP2YRS, DEPOTHR, NACCGDS, DEPTREATnew,
+                                        NACCANXnew, ANXIETYnew,
+                                        HEADIMP, IMPYEARS, HEADINJURY, HEADINJUNC, HEADINJCON, HEADINJNUM, NACCTBI, TBInew, TBIBRIEF, TRAUMBRFnew,TBIEXTEN,
+                                        TRAUMEXTnew, TBIWOLOS, TRAUMCHRnew, 
+                                        SLEEPAP, CPAPnew, APNEAORALnew, RBDnew, INSOMNnew, OTHSLEEPnew, 
+                                        HEARINGnew, HEARWAIDnew,
+                                        VISIONnew, VISWCORRnew,
+                                        DECCLCOG, NACCMMSEnew, NACCMOCAnew, NACCMOCBnew, NORMCOGnew, DEMENTED, MCI, NACCUDSD))
+
+
+
