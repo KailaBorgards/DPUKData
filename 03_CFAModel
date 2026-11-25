@@ -1,0 +1,181 @@
+################ CFA for lifestyle ############
+###############################################
+
+## Dataset
+'Compute single factors for each lifestyle'
+names(df_cleanp)
+df_cfa <- subset(df_cleanp, select = c(NACCID, NACCAGE, NACCSEX,
+                                       EDUCnew, NACCEDULVLnew,
+                                        HYPERTENnew, HYPERTnew, BPSYS, BPDIAS,
+                                        DIABETESnew,
+                                        HYPERCHOnew, HYPCHOL,
+                                        NACCBMI, 
+                                        MARISTATnew, NACCLIVSnew,
+                                        TOBAC100, TOBAC30,
+                                        ALCOCCAS, ALCOHOLnew,
+                                        NACCDEP, DEP2YRS, DEPOTHR, NACCGDS, DEPTREATnew,
+                                        NACCANXnew, ANXIETYnew,
+                                        NACCTBI, TBInew, TBIBRIEF, TBIEXTEN,TBIWOLOS, 
+                                        SLEEPAP, RBDnew, INSOMNnew, OTHSLEEPnew, 
+                                        HEARINGnew,
+                                        VISIONnew,
+                                       DECCLCOG, NACCMOCAnew, NORMCOGnew, DEMENTED, NACCUDSD))
+
+############### CFA for lifestyles ############
+###############################################
+## Diabetes, Obesity, Vision, Alcohol and Hearing only one indicator so no latent variable necessary
+
+### Education
+education <- df_cfa %>%
+  select(EDUCnew, NACCEDULVLnew)
+
+## FA
+# Run factor analysis with 1 factor for Education and varimax rotation
+edu_result <- fa(education, nfactors = 1, rotate = "varimax", fm = "ml")
+
+# Print factor loadings
+print(edu_result$loadings, cutoff = 0.3)
+mean(edu_result$communality) #good
+
+#Export to Table
+edu_loadings_df <- as.data.frame(edu_result$scores)
+edu_loadings_df$EDUCATION <- edu_loadings_df$ML1
+
+### Hypertension
+hypertension <- df_cfa %>% select(HYPERTENnew, HYPERTnew, BPSYS, BPDIAS)
+bp_result <- fa(hypertension, nfactors = 1, rotate = "varimax", fm = "ml")
+print(bp_result$loadings, cutoff = 0.1)
+mean(bp_result$communality) #not good, BPSYS and BPDIAS have lower than 0.3 loading 
+# Remove
+hypertension <- df_cfa %>% select(HYPERTENnew, HYPERTnew)
+bp_result <- fa(hypertension, nfactors = 1, rotate = "varimax", fm = "ml")
+print(bp_result$loadings, cutoff = 0.1)
+mean(bp_result$communality) #okay
+bp_loadings_df <- as.data.frame(bp_result$scores)
+bp_loadings_df$BP <- bp_loadings_df$ML1
+
+### High Cholesterol
+cholesterol <- df_cfa %>% select(HYPERCHOnew, HYPCHOL)
+ch_result <- fa(cholesterol, nfactors = 1, rotate = "varimax", fm = "ml")
+print(ch_result$loadings, cutoff = 0.1)
+mean(ch_result$communality) #okay
+ch_loadings_df <- as.data.frame(ch_result$scores)
+ch_loadings_df$CHOLESTEROL <- ch_loadings_df$ML1
+
+### Social Isolation
+social <- df_cfa %>% select(MARISTATnew, NACCLIVSnew)
+si_result <- fa(social, nfactors = 1, rotate = "varimax", fm = "ml")
+print(si_result$loadings, cutoff = 0.1)
+mean(si_result$communality) #okay
+si_loadings_df <- as.data.frame(si_result$scores)
+si_loadings_df$SOCIALISOLATION <- si_loadings_df$ML1
+
+### Smoking
+smoking <- df_cfa %>% select(TOBAC100, TOBAC30)
+smk_result <- fa(smoking, nfactors = 1, rotate = "varimax", fm = "ml")
+print(smk_result$loadings, cutoff = 0.1)
+mean(smk_result$communality) #not okay
+smk_loadings_df <- as.data.frame(smk_result$scores) ## Consider using only one variable
+smk_loadings_df$SMOKING <- smk_loadings_df$ML1
+
+### Alcohol
+alcohol <- df_cfa %>% select(ALCOCCAS, ALCOHOLnew)
+alc_result <- fa(alcohol, nfactors = 1, rotate = "varimax", fm = "ml")
+print(alc_result$loadings, cutoff = 0.1)
+mean(alc_result$communality) #bad
+alc_loadings_df <- as.data.frame(alc_result$scores)
+alc_loadings_df$ALCOHOL <- alc_loadings_df$ML1
+
+## Removing ALCOHOLnew; only keeping ALCOCCAS to measure consumption
+
+### Depression
+depression <- df_cfa %>% select(NACCDEP, DEP2YRS, DEPOTHR)
+dep_result <- fa(depression, nfactors = 1, rotate = "varimax", fm = "ml")
+print(dep_result$loadings, cutoff = 0.1)
+mean(dep_result$communality) #better after excluding NACCGDS, DEPTREATnew ## but consider keeping 
+dep_loadings_df <- as.data.frame(dep_result$scores)
+dep_loadings_df$DEPRESSION <- dep_loadings_df$ML1
+
+
+### Anxiety
+anxiety <- df_cfa %>% select(NACCANXnew, ANXIETYnew)
+anx_result <- fa(anxiety, nfactors = 1, rotate = "varimax", fm = "ml")
+print(anx_result$loadings, cutoff = 0.1)
+mean(anx_result$communality) #good
+anx_loadings_df <- as.data.frame(anx_result$scores)
+anx_loadings_df$ANXIETY <- anx_loadings_df$ML1
+
+### TBI
+tbi <- df_cfa %>% select(NACCTBI, TBInew, TBIBRIEF, TBIEXTEN,TBIWOLOS)
+tbi_result <- fa(tbi, nfactors = 1, rotate = "varimax", fm = "ml")
+print(tbi_result$loadings, cutoff = 0.1)
+mean(tbi_result$communality) #good
+tbi_loadings_df <- as.data.frame(tbi_result$scores)
+tbi_loadings_df$TBI <- tbi_loadings_df$ML1
+
+### Sleep
+sleep <- df_cfa %>% select(SLEEPAP, RBDnew)
+sleep_result <- fa(sleep, nfactors = 1, rotate = "varimax", fm = "ml")
+print(sleep_result$loadings, cutoff = 0.1)
+mean(sleep_result$communality) #exclude, INSOMNnew, OTHSLEEPnew; Still very low
+sleep_loadings_df <- as.data.frame(sleep_result$scores)
+sleep_loadings_df$SLEEP <- sleep_loadings_df$ML1
+
+## Names of factors
+education, hypertension, cholesterol, social, smoking, depression, anxiety, tbi, sleep
+
+### Cognition
+cognition <- df_cfa %>% select(DECCLCOG, NACCMOCAnew, NORMCOGnew, DEMENTED, NACCUDSD)
+cog_result <- fa(cognition, nfactors = 1, rotate = "varimax", fm = "ml")
+print(cog_result$loadings, cutoff = 0.1)
+mean(cog_result$communality) #xxx
+cog_loadings_df <- as.data.frame(cog_result$scores)
+cog_loadings_df$COGNITION <- cog_loadings_df$ML1
+
+'
+Next up, is 
+1) inspect the cognition (done) and Brain health (tbd) data for NAs and variance
+2) decide on latent factors for brain health and cognition -> Global cognition
+3) Design individual models for all 17 lifestyle factors 
+4) Run SEMs
+'
+
+## Brain Health data
+data_imaging <- subset(Imaging2, select = c(NACCID, SCANDT, CEREBRUMTCV, GM, HIPPOCAMPUS, WMH, LHCEREBRALWHITEMATTER, RHCEREBRALWHITEMATTER, CEREBRALWHITEMATTER)) 
+## Merge with previous data
+nrow(data_imaging_filtered)
+data_imaging_filtered <- data_imaging %>%
+  semi_join(df_cfa, by = "NACCID")
+
+## Keep only the earliest visit, for now
+data_imaging_filtered <- data_imaging_filtered %>%
+  group_by(NACCID) %>%
+  arrange(as.Date(SCANDT), .by_group = TRUE) %>%
+  mutate(VISIT = row_number()) %>%
+  ungroup()
+
+data_imaging_filtered <- data_imaging_filtered %>%
+  filter(VISIT == 1)
+nrow(data_imaging_filtered) #okay
+
+########## Clean brain health data #########
+### Check that all variables are numeric
+names(data_imaging_filtered)[!sapply(data_imaging_filtered, is.numeric)] #All numeric as expected, except NCCID
+
+# Check for NAs, percentage
+na_percent_img <- round(colMeans(is.na(data_imaging_filtered)) *100, 2)
+na_percent_img
+## over 25% NAs
+high_na_cols_img <- names(na_percent_img[na_percent_img > 25])
+high_na_cols_img # None
+
+## Check if any participants have more than 25% NAs
+nrow(data_imaging_filtered) #6192
+row_na_prop_img <- rowMeans(is.na(data_imaging_filtered))
+data_imaging_filtered_p <- data_imaging_filtered[row_na_prop_img <= 0.25, ]
+nrow(data_imaging_filtered_p) #same number
+
+
+#### Merge dataset for SEM
+data_sem <- df_cfa %>%
+  left_join(data_imaging_filtered_p, by = "NACCID")
