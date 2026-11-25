@@ -1,0 +1,83 @@
+############### Correlations ################
+############################################
+
+######################## Data cleaning  ##########################
+##################################################################
+
+### inspect data
+summary(datalsnew)
+describe(datalsnew)
+class(datalsnew)
+datalsnew <- as.data.frame(datalsnew)
+
+### Check that all variables are numeric
+names(datalsnew)[!sapply(datalsnew, is.numeric)] #All numeric as expected, except NCCID
+
+# Check for NAs, percentage
+na_percent <- round(colMeans(is.na(datalsnew)) *100, 2)
+na_percent
+## over 25% NAs
+high_na_cols <- names(na_percent[na_percent > 25])
+high_na_cols # 39 variables out of 83
+
+ncol(datalsnew)
+
+## Exclude all the variables with more than 25% NAs
+datalsclean <- datalsnew[ , colMeans(is.na(datalsnew)) <= 0.25] #excluded 39 variables
+
+
+## Check if any participants have more than 25% NAs
+nrow(datalsclean) #6192
+row_na_prop <- rowMeans(is.na(datalsclean))
+df_cleanp <- datalsclean[row_na_prop <= 0.25, ]
+nrow(df_cleanp) #5069, 1123 participants were kicked out
+
+#Check if any column has 0 variance
+which(sapply(df_plot, function(x) var(x, na.rm = TRUE) == 0)) #0
+names(df_plot)[
+  sapply(df_plot, sd, na.rm = TRUE) == 0
+] # Removing another 3 variables
+
+'After cleaning, no more variables for physical exercise'
+
+
+## New subset only for plot, removing ID
+
+df_plot <- subset(df_cleanp, select = c( EDUCnew, NACCEDULVLnew,
+                                        HYPERTENnew, HYPERTnew, BPSYS, BPDIAS,
+                                        DIABETESnew,
+                                        HYPERCHOnew, HYPCHOL,
+                                        NACCBMI, 
+                                        MARISTATnew, NACCLIVSnew,
+                                        TOBAC100, TOBAC30,
+                                        ALCOCCAS, ALCOHOLnew,
+                                        NACCDEP, DEP2YRS, DEPOTHR, NACCGDS, DEPTREATnew,
+                                        NACCANXnew, ANXIETYnew,
+                                        NACCTBI, TBInew, TBIBRIEF, TBIEXTEN,TBIWOLOS, 
+                                        SLEEPAP, RBDnew, INSOMNnew, OTHSLEEPnew, 
+                                        HEARINGnew,
+                                        VISIONnew))
+
+## Add cognition later
+
+ncol(df_plot)
+
+
+#### Plot correlation Matirx
+
+cov_matrix <- cor(df_plot, use = "pairwise.complete.obs")
+which(is.na(cov_matrix), arr.ind = T)
+
+
+results <- psych::corr.test(
+  df_plot,
+  use = "pairwise",
+  adjust = "none"
+)
+
+cor_matrix <- results$r
+p_matrix <- results$p
+
+corrplot(cor_matrix, method = "color", type = "upper", p.mat = p_matrix, sig.level = c(0.001, 0.01, 0.05), insig = "label_sig", pch.cex = 1.2, pch.col = "black", diag = F)
+corrplot(cor_matrix, method = "color", type = "upper", p.mat = p_matrix, sig.level = 0.05, insig = "blank", tl.col = "black", diag = F)
+
