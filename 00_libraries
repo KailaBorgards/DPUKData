@@ -1,0 +1,138 @@
+
+
+### Install packages
+install.packages("readxl", type ="binary", dependency = TRUE)# To read Excel files
+install.packages("openxlsx", type ="binary", dependency = TRUE)# To create Excel files
+install.packages("dplyr", type ="binary", dependency = TRUE) # For data manipulation
+install.packages("tidyr", type ="binary", dependency = TRUE) # For additional data manipulation
+install.packages("psych", type ="binary", dependency = TRUE) # For additional data manipulation
+install.packages("ggplot2", type ="binary", dependency = TRUE) # For additional data manipulation
+install.packages("corrplot", type ="binary", dependency = TRUE) # For additional data manipulation
+install.packages("lavaan", type ="binary", dependency = TRUE)# For additional data manipulation
+install.packages("semTools", type ="binary", dependency = TRUE)
+install.packages("knitr", type ="binary", dependency = TRUE)
+install.packages("kableExtra", type ="binary", dependency = TRUE)
+install.packages("GPArotation", type ="binary", dependency = TRUE)
+install.packages("factoextra", type ="binary", dependency = TRUE)
+install.packages("semPlot", type ="binary", dependency = TRUE)
+install.packages("reshape2", type ="binary", dependency = TRUE)
+install.packages("Hmisc", type ="binary", dependency = TRUE)
+install.packages("data.table", type ="binary", dependency = TRUE)
+
+## Import packages
+library(readxl)
+library(openxlsx)
+library(dplyr)
+library(tidyr)
+library(psych)
+library(ggplot2)
+library(corrplot)
+library(lavaan)
+library(semTools)
+library(knitr)
+library(kableExtra)
+library(GPArotation)
+library(factoextra)
+library(semPlot)
+library(reshape2)
+library(Hmisc)
+library(data.table)
+
+
+###### READ DATA (do not repeat every time)#######
+################################################
+
+# Set Working directory
+setwd("/Users/kailaborgards/Desktop/NACC data")
+getwd()
+
+#Load RAW DATA sheets - Lifestyle, Clinical and MRI
+Questionnaire <- fread("investigator_nacc75.csv")
+Imaging1 <- fread("investigator_scan_clariti_mri_csv_nacc75/investigator_scan_clariti_mriqc_nacc75.csv")
+Imaging2 <- fread("investigator_scan_clariti_mri_csv_nacc75/investigator_scan_clariti_mrisbm_nacc75.csv")
+
+common_vars <- Reduce(intersect, list(names(Questionnaire), names(Imaging1), names(Imaging2)))
+print(common_vars)
+
+ncol(Questionnaire)
+names(Imaging1)
+ncol(Imaging2)
+
+# intersect(colnames(imaging1_filtered), colnames(Imaging2))
+
+## Reduce datasets to only include participants of with imaging data
+questionnaire_filtered <- Questionnaire %>%
+  semi_join(Imaging2, by = "NACCID")
+
+imaging1_filtered <- Imaging1 %>%
+  semi_join(Imaging2, by = "NACCID")
+
+View(questionnaire_filtered)
+View(imaging1_filtered)
+
+
+########### SELECT DATA ###############
+######################################
+
+## Whole dataset
+questionnaire_filtered #lifestyle and demografics
+imaging1_filtered #meta data imaging
+Imaging2 #Imaging data
+
+
+## Select variables that I need based on manual selection of variables related to Livingston et al. (2024)
+## link to dictionary: https://files.alz.washington.edu/documentation/uds4-rdd.pdf 
+# Create subset ## ONLY RELEVANT VARIABLES FOR CROSS SECTIONAL WILL BE CONSIDERED, BUT LONGITUDINAL (REPETITION) ARE AVAILABLE (E.G.NACCAVST, NACCDAYS, NACCFDYS)
+datals <- subset(questionnaire_filtered, select = c(NACCID, VISITDATE, NACCVNUM, NACCAGE, NACCSEX,
+                                                    EDUC, NACCEDULVL,
+                                                    EXRTIME,
+                                                    NACCAHTN, NACCHTNC, HYPERTEN, HYPERT, HYPERTAGE, NACCBPSYSL, NACCBPSYSR, NACCBPDIAL, NACCBPDIAR, BPSYS, BPDIAS, HXHYPER,
+                                                    NACCDBMD, DIABETES, DIABINS, DIABMEDS, DIABGLP1, DIABRECACT, DIABDIET, DIABUNK, DIABAGE,
+                                                    NACCLIPL, HYPERCHO, HYPCHOL, HYPERCHAGE,
+                                                    HEIGHT, WEIGHT, NACCBMI, NACCWAIST, NACCHIP,
+                                                    MARISTAT, NACCLIVS, MISSPEOPLE, FRIENDS, ABANDONED, CLOSEFRND, PARENTCOMM, CHILDCOMM, FRIENDCOMM, PARTICIPATE,
+                                                    TOBAC100, SMOKYRS, PACKSPER, TOBAC30, QUITSMOK,
+                                                    ALCFREQYR, ALCOCCAS, ALCFREQ, ALCDRINKS, ALCBINGE, ALCOHOL,
+                                                    NACCADEP, NACCDEP, MAJORDEP, OTHERDEP, DEP2YRS, DEPOTHR, DEPD, DEPDSEV,NACCGDS, DEPTREAT,
+                                                    NACCAANX, NACCANX, ANXIETY, GENERALANX, PANICDIS, OCD, OTHANXDIS, ANX, ANXSEV,
+                                                    HEADIMP, IMPYEARS, HEADINJURY, HEADINJUNC, HEADINJCON, HEADINJNUM, FIRSTTBI, LASTTBI, NACCTBI, TBI, TBIBRIEF, TRAUMBRF,TBIEXTEN,
+                                                    TRAUMEXT, TBIWOLOS, TRAUMCHR, TBIYEAR,
+                                                    SLEEPAP, CPAP, APNEAORAL, RBD, REMDIS, INSOMN, HYPOSOM, OTHSLEEP, SLEEPOTH,
+                                                    HEARING, HEARAID, HEARWAID,
+                                                    VISION, VISCORR, VISWCORR,
+                                                    DECCLIN, DECCLCOG, NACCMMSE, NACCMOCA, NACCMOCB, NORMCOG, DEMENTED, MCI, NACCUDSD))
+ncol(datals)
+
+'
+Other = NACCID, VISITDATE, NACCVNUM, NACCAGE, NACCSEX
+Education = EDUC, NACCEDULVL
+Physical exercise = EXRTIME
+BP = NACCAHTN, NACCHTNC, HYPERTEN, HYPERT, HYPERTAGE, NACCBPSYSL, NACCBPSYSR, NACCBPDIAL, NACCBPDIAR, BPSYS, BPDIAS, HXHYPER
+Diabetes = NACCDBMD, DIABETES, DIABINS, DIABMEDS, DAIBGLP1, DIABREACT, DIABDIET, DIABUN, DIABAGE
+Cholesterol = NACCLIPL, HYPERCHO, HYPCHOL, HYPERCHAGE
+Obesity = HEIGHT, WEIGHT, NACCBMI, NACCWAIST, NACCHIP
+Air pollution = 
+Social Isolation = MARISTAT, NACCLIVS, MISSPEOPLE, FRIENDS, ABANDONDED, CLOSEFRND, PARENTCOMM, CHILDCOMM, FRIENDCOMM, PARTICIPATE
+Smoking = TOBAC100, SMOKYRS, PACKSPER, TOBAC30, QUITSMOK
+Alcohol = ALCFREQYR, ALCOCCAS, ALCFREQ, ALCDRINKS, ALCBINGE, ALCOHOL
+Depression = NACCADEP, NACCDEP, MAJORDEP, OTHERDEP, DEP2YRS, DEPOTH, DEPTREA, DEPD, DEPDSEV,NACCGDS, DEPTREAT
+Anxiety = NACCAANX, NACCANX, ANXIETY, GENERALANX, PANICDIS, OCD, OTHANXDIS, ANX, ANXSEV
+TBI = HEADIMP, IMPYEARS, HEADINJURY, HEADINJUNC, HEADINJCON, HEADINJNUM, FIRSTTBI, LASTTBI, NACCTBI, TBI, TBIBRIEF, TRAUMBRF, TBIECTEN, TRAUMEXT, TBIWOLOS, TRAUMCHR, TBIYEAR
+Sleep = SLEEPAP, CPAP, APNEAORAL RBD, REMDIS, INSOMN, HYPOSOM, OTHSLEEP, SLEEPOTH
+Diet = 
+Hearing loss = HEARING, HEARAID, HEARWAID
+Vision Loss = VISION, VISCORR, VISWCORR
+
+
+
+COGNITION = DECCLIN, DECCLCOG, NACCMMSE, NACCMOCA, NACCMOCB, NORMCOG, DEMENTED, MCI, NACCUDSD ## VARIOUS MORE
+
+'
+
+## Subset of imaging variables
+## data dictionary: https://files.alz.washington.edu/documentation/SCAN-MRI-Imaging-RDD.pdf 
+data_imaging <- subset(Imaging2, select = c(NACCID, SCANDT, CEREBRUMTCV, GM, HIPPOCAMPUS, WMH, LHCEREBRALWHITEMATTER, RHCEREBRALWHITEMATTER, CEREBRALWHITEMATTER)) 
+                                            
+                                            
+                                            
+                                            
