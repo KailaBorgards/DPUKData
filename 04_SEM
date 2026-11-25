@@ -1,0 +1,1245 @@
+################### SEM per lifestyle ############
+##################################################
+
+#### Brain health variables
+NACCID, SCANDT, CEREBRUMTCV, GM, HIPPOCAMPUS, WMH, LHCEREBRALWHITEMATTER, RHCEREBRALWHITEMATTER, CEREBRALWHITEMATTER
+#Dataset 
+names(data_merged), NACCAGE, NACCSEX,
+# Name of Factors
+education, hypertension, cholesterol, social, smoking, depression, anxiety, tbi, sleep AND cognition
+# Name of one variables of one indicator "factors"
+DIABETESnew,NACCBMI, VISIONnew,HEARINGnew,ALCOCCAS
+
+
+
+############################################################################################################################
+######################################################### EDUCATION ########################################################
+############################################################################################################################
+
+
+Edu_Model <- '
+  ################################
+  # 1. Measurement models
+  ################################
+
+  cognition =~ DECCLCOG + NACCMOCAnew + DEMENTED
+
+
+  ################################
+  # 2. Paths from lifestyle
+  #    to the six mediators
+  ################################
+
+  CEREBRUMTCV ~ a1*EDUCnew + NACCAGE + NACCSEX
+  GM ~ a2*EDUCnew + NACCAGE + NACCSEX
+  HIPPOCAMPUS ~ a3*EDUCnew + NACCAGE + NACCSEX
+  WMH ~ a4*EDUCnew + NACCAGE + NACCSEX
+  CEREBRALWHITEMATTER ~ a5*EDUCnew + NACCAGE + NACCSEX
+  
+  CEREBRUMTCV ~~ GM
+  CEREBRUMTCV ~~ CEREBRALWHITEMATTER
+  GM ~~ CEREBRALWHITEMATTER
+  GM ~~ HIPPOCAMPUS
+  HIPPOCAMPUS ~~ CEREBRALWHITEMATTER
+  HIPPOCAMPUS ~~ CEREBRUMTCV
+  
+  ################################
+  # 3. Paths to cognition
+  ################################
+
+  cognition ~ c_prime*EDUCnew +
+              b1*CEREBRUMTCV + b2*GM +
+              b3*HIPPOCAMPUS + b4*WMH +
+              b5*CEREBRALWHITEMATTER +
+              NACCAGE + NACCSEX
+
+
+  ################################
+  # 4. Indirect effects
+  ################################
+
+  ind_TCV := a1*b1
+  ind_GM := a2*b2
+  ind_HIP := a3*b3
+  ind_WMH := a4*b4
+  ind_TWM := a5*b5
+
+
+  ################################
+  # 5. Total indirect effect
+  ################################
+
+  total_indirect := ind_TCV + ind_GM +
+                    ind_HIP + ind_WMH +
+                    ind_TWM
+
+
+  ################################
+  # 6. Total effect
+  ################################
+
+  total_effect := c_prime + total_indirect
+
+'
+
+fit_edu <- cfa(Edu_Model, data = data_merged_scaled, missing = "fiml", verbose = T, optim.method = "BFGS")
+summary(fit_edu, fit.measures = T, standardized = T)
+
+### Steps taken to optimize model
+# 1) Scale data
+# 2) Exclude variables with 0 covariance
+# 3) Double check multicollinearity or correlation of 1 in latent factors and between brain indicators and reduce if necessary
+# 4) check for residual covariance and account for it in model 
+# 5) New model is above
+
+'
+factor_scores <- lavPredict(fit_edu)
+cor.test(
+  factor_scores[, "education"],
+  factor_scores[, "cognition"],
+  method = "pearson"
+)
+
+### Fixing Warnings, 
+# removing cerebralwhitematter as it correlates to 1 ith left wm
+# Scaling data
+
+data_merged_scaled <- data_merged
+imaging_vars <- c(
+  "CEREBRUMTCV",
+  "GM",
+  "HIPPOCAMPUS",
+  "WMH",
+  "CEREBRALWHITEMATTER"
+)
+data_merged_scaled[imaging_vars] <- lapply(
+  data_merged_scaled[imaging_vars],
+  function(x) as.numeric(scale(x))
+)
+sapply(data_merged_scaled[imaging_vars], mean, na.rm = TRUE)
+sapply(data_merged_scaled[imaging_vars], sd, na.rm = TRUE)
+
+### check for negative variance
+parameterEstimates(fit_edu) %>%
+  filter(
+    op == "~~",
+    lhs == rhs,
+    lhs %in% c("education", "cognition")
+  ) %>%
+  select(lhs, est, se, pvalue)
+
+
+## Check which residual covariances to add
+
+fitMeasures(
+  fit_edu,
+  c("cfi.robust", "tli.robust",
+    "rmsea.robust", "srmr")
+)
+
+
+modindices(fit_edu) %>%
+  dplyr::arrange(desc(mi)) %>%
+  dplyr::select(lhs, op, rhs, mi, epc, sepc.all) %>%
+  head(10)
+'
+
+
+############################################################################################################################
+######################################################### HYPERTENSION ########################################################
+############################################################################################################################
+
+
+bp_Model <- '
+  ################################
+  # 1. Measurement models
+  ################################
+
+  cognition =~ DECCLCOG + NACCMOCAnew + DEMENTED
+  hypertension =~ HYPERTENnew + HYPERTnew
+
+  ################################
+  # 2. Paths from lifestyle
+  #    to the six mediators
+  ################################
+
+  CEREBRUMTCV ~ a1*hypertension + NACCAGE + NACCSEX
+  GM ~ a2*hypertension + NACCAGE + NACCSEX
+  HIPPOCAMPUS ~ a3*hypertension + NACCAGE + NACCSEX
+  WMH ~ a4*hypertension + NACCAGE + NACCSEX
+  CEREBRALWHITEMATTER ~ a5*hypertension + NACCAGE + NACCSEX
+  
+  CEREBRUMTCV ~~ GM
+  CEREBRUMTCV ~~ CEREBRALWHITEMATTER
+  GM ~~ CEREBRALWHITEMATTER
+  GM ~~ HIPPOCAMPUS
+  HIPPOCAMPUS ~~ CEREBRALWHITEMATTER
+  HIPPOCAMPUS ~~ CEREBRUMTCV
+  
+  ################################
+  # 3. Paths to cognition
+  ################################
+
+  cognition ~ c_prime*hypertension +
+              b1*CEREBRUMTCV + b2*GM +
+              b3*HIPPOCAMPUS + b4*WMH +
+              b5*CEREBRALWHITEMATTER +
+              NACCAGE + NACCSEX
+
+
+  ################################
+  # 4. Indirect effects
+  ################################
+
+  ind_TCV := a1*b1
+  ind_GM := a2*b2
+  ind_HIP := a3*b3
+  ind_WMH := a4*b4
+  ind_TWM := a5*b5
+
+
+  ################################
+  # 5. Total indirect effect
+  ################################
+
+  total_indirect := ind_TCV + ind_GM +
+                    ind_HIP + ind_WMH +
+                    ind_TWM
+
+
+  ################################
+  # 6. Total effect
+  ################################
+
+  total_effect := c_prime + total_indirect
+
+'
+
+fit_bp <- cfa(bp_Model, data = data_merged_scaled, missing = "fiml", verbose = T, optim.method = "BFGS")
+summary(fit_bp, fit.measures = T, standardized = T)
+
+############################################################################################################################
+######################################################### CHOLESTEROL ########################################################
+############################################################################################################################
+
+
+ch_Model <- '
+  ################################
+  # 1. Measurement models
+  ################################
+
+  cognition =~ DECCLCOG + NACCMOCAnew + DEMENTED
+  cholesterol =~ HYPERCHOnew + HYPCHOL
+
+  ################################
+  # 2. Paths from lifestyle
+  #    to the six mediators
+  ################################
+
+  CEREBRUMTCV ~ a1*cholesterol + NACCAGE + NACCSEX
+  GM ~ a2*cholesterol + NACCAGE + NACCSEX
+  HIPPOCAMPUS ~ a3*cholesterol + NACCAGE + NACCSEX
+  WMH ~ a4*cholesterol + NACCAGE + NACCSEX
+  CEREBRALWHITEMATTER ~ a5*cholesterol + NACCAGE + NACCSEX
+  
+  CEREBRUMTCV ~~ GM
+  CEREBRUMTCV ~~ CEREBRALWHITEMATTER
+  GM ~~ CEREBRALWHITEMATTER
+  GM ~~ HIPPOCAMPUS
+  HIPPOCAMPUS ~~ CEREBRALWHITEMATTER
+  HIPPOCAMPUS ~~ CEREBRUMTCV
+  
+  ################################
+  # 3. Paths to cognition
+  ################################
+
+  cognition ~ c_prime*cholesterol +
+              b1*CEREBRUMTCV + b2*GM +
+              b3*HIPPOCAMPUS + b4*WMH +
+              b5*CEREBRALWHITEMATTER +
+              NACCAGE + NACCSEX
+
+
+  ################################
+  # 4. Indirect effects
+  ################################
+
+  ind_TCV := a1*b1
+  ind_GM := a2*b2
+  ind_HIP := a3*b3
+  ind_WMH := a4*b4
+  ind_TWM := a5*b5
+
+
+  ################################
+  # 5. Total indirect effect
+  ################################
+
+  total_indirect := ind_TCV + ind_GM +
+                    ind_HIP + ind_WMH +
+                    ind_TWM
+
+
+  ################################
+  # 6. Total effect
+  ################################
+
+  total_effect := c_prime + total_indirect
+
+'
+
+fit_ch <- cfa(ch_Model, data = data_merged_scaled, missing = "fiml", verbose = T, optim.method = "BFGS")
+summary(fit_ch, fit.measures = T, standardized = T)
+
+############################################################################################################################
+######################################################### Social ########################################################
+############################################################################################################################
+
+
+si_Model <- '
+  ################################
+  # 1. Measurement models
+  ################################
+
+  cognition =~ DECCLCOG + NACCMOCAnew + DEMENTED
+  social =~ MARISTATnew + NACCLIVSnew
+
+  ################################
+  # 2. Paths from lifestyle
+  #    to the six mediators
+  ################################
+
+  CEREBRUMTCV ~ a1*social + NACCAGE + NACCSEX
+  GM ~ a2*social + NACCAGE + NACCSEX
+  HIPPOCAMPUS ~ a3*social + NACCAGE + NACCSEX
+  WMH ~ a4*social + NACCAGE + NACCSEX
+  CEREBRALWHITEMATTER ~ a5*social + NACCAGE + NACCSEX
+  
+  CEREBRUMTCV ~~ GM
+  CEREBRUMTCV ~~ CEREBRALWHITEMATTER
+  GM ~~ CEREBRALWHITEMATTER
+  GM ~~ HIPPOCAMPUS
+  HIPPOCAMPUS ~~ CEREBRALWHITEMATTER
+  HIPPOCAMPUS ~~ CEREBRUMTCV
+  
+  ################################
+  # 3. Paths to cognition
+  ################################
+
+  cognition ~ c_prime*social +
+              b1*CEREBRUMTCV + b2*GM +
+              b3*HIPPOCAMPUS + b4*WMH +
+              b5*CEREBRALWHITEMATTER +
+              NACCAGE + NACCSEX
+
+
+  ################################
+  # 4. Indirect effects
+  ################################
+
+  ind_TCV := a1*b1
+  ind_GM := a2*b2
+  ind_HIP := a3*b3
+  ind_WMH := a4*b4
+  ind_TWM := a5*b5
+
+
+  ################################
+  # 5. Total indirect effect
+  ################################
+
+  total_indirect := ind_TCV + ind_GM +
+                    ind_HIP + ind_WMH +
+                    ind_TWM
+
+
+  ################################
+  # 6. Total effect
+  ################################
+
+  total_effect := c_prime + total_indirect
+
+'
+
+fit_si <- cfa(si_Model, data = data_merged_scaled, missing = "fiml", verbose = T, optim.method = "BFGS")
+summary(fit_si, fit.measures = T, standardized = T)
+
+
+############################################################################################################################
+######################################################### SMOKING ########################################################
+############################################################################################################################
+
+
+smk_Model <- '
+  ################################
+  # 1. Measurement models
+  ################################
+
+  cognition =~ DECCLCOG + NACCMOCAnew + DEMENTED
+
+  ################################
+  # 2. Paths from lifestyle
+  #    to the six mediators
+  ################################
+
+  CEREBRUMTCV ~ a1*TOBAC30 + NACCAGE + NACCSEX
+  GM ~ a2*TOBAC30 + NACCAGE + NACCSEX
+  HIPPOCAMPUS ~ a3*TOBAC30 + NACCAGE + NACCSEX
+  WMH ~ a4*TOBAC30 + NACCAGE + NACCSEX
+  CEREBRALWHITEMATTER ~ a5*TOBAC30 + NACCAGE + NACCSEX
+  
+  CEREBRUMTCV ~~ GM
+  CEREBRUMTCV ~~ CEREBRALWHITEMATTER
+  GM ~~ CEREBRALWHITEMATTER
+  GM ~~ HIPPOCAMPUS
+  HIPPOCAMPUS ~~ CEREBRALWHITEMATTER
+  HIPPOCAMPUS ~~ CEREBRUMTCV
+  
+  ################################
+  # 3. Paths to cognition
+  ################################
+
+  cognition ~ c_prime*TOBAC30 +
+              b1*CEREBRUMTCV + b2*GM +
+              b3*HIPPOCAMPUS + b4*WMH +
+              b5*CEREBRALWHITEMATTER +
+              NACCAGE + NACCSEX
+
+
+  ################################
+  # 4. Indirect effects
+  ################################
+
+  ind_TCV := a1*b1
+  ind_GM := a2*b2
+  ind_HIP := a3*b3
+  ind_WMH := a4*b4
+  ind_TWM := a5*b5
+
+
+  ################################
+  # 5. Total indirect effect
+  ################################
+
+  total_indirect := ind_TCV + ind_GM +
+                    ind_HIP + ind_WMH +
+                    ind_TWM
+
+
+  ################################
+  # 6. Total effect
+  ################################
+
+  total_effect := c_prime + total_indirect
+
+'
+
+fit_smk <- cfa(smk_Model, data = data_merged_scaled, missing = "fiml", verbose = T, optim.method = "BFGS")
+summary(fit_smk, fit.measures = T, standardized = T)
+#TOBAC100 removed due to negative vairance
+
+############################################################################################################################
+######################################################### ALCOHOL ########################################################
+############################################################################################################################
+
+
+alc_Model <- '
+  ################################
+  # 1. Measurement models
+  ################################
+
+  cognition =~ DECCLCOG + NACCMOCAnew + DEMENTED
+
+  ################################
+  # 2. Paths from lifestyle
+  #    to the six mediators
+  ################################
+
+  CEREBRUMTCV ~ a1*ALCOCCAS + NACCAGE + NACCSEX
+  GM ~ a2*ALCOCCAS + NACCAGE + NACCSEX
+  HIPPOCAMPUS ~ a3*ALCOCCAS + NACCAGE + NACCSEX
+  WMH ~ a4*ALCOCCAS + NACCAGE + NACCSEX
+  CEREBRALWHITEMATTER ~ a5*ALCOCCAS + NACCAGE + NACCSEX
+  
+  CEREBRUMTCV ~~ GM
+  CEREBRUMTCV ~~ CEREBRALWHITEMATTER
+  GM ~~ CEREBRALWHITEMATTER
+  GM ~~ HIPPOCAMPUS
+  HIPPOCAMPUS ~~ CEREBRALWHITEMATTER
+  HIPPOCAMPUS ~~ CEREBRUMTCV
+  
+  ################################
+  # 3. Paths to cognition
+  ################################
+
+  cognition ~ c_prime*ALCOCCAS +
+              b1*CEREBRUMTCV + b2*GM +
+              b3*HIPPOCAMPUS + b4*WMH +
+              b5*CEREBRALWHITEMATTER +
+              NACCAGE + NACCSEX
+
+
+  ################################
+  # 4. Indirect effects
+  ################################
+
+  ind_TCV := a1*b1
+  ind_GM := a2*b2
+  ind_HIP := a3*b3
+  ind_WMH := a4*b4
+  ind_TWM := a5*b5
+
+
+  ################################
+  # 5. Total indirect effect
+  ################################
+
+  total_indirect := ind_TCV + ind_GM +
+                    ind_HIP + ind_WMH +
+                    ind_TWM
+
+
+  ################################
+  # 6. Total effect
+  ################################
+
+  total_effect := c_prime + total_indirect
+
+'
+
+fit_alc <- cfa(alc_Model, data = data_merged_scaled, missing = "fiml", verbose = T, optim.method = "BFGS")
+summary(fit_alc, fit.measures = T, standardized = T)
+
+
+############################################################################################################################
+######################################################### DEPRESSION ########################################################
+############################################################################################################################
+
+
+dep_Model <- '
+  ################################
+  # 1. Measurement models
+  ################################
+
+  cognition =~ DECCLCOG + NACCMOCAnew + DEMENTED
+  depression =~ NACCDEP + DEP2YRS + DEPOTHR
+
+  ################################
+  # 2. Paths from lifestyle
+  #    to the six mediators
+  ################################
+
+  CEREBRUMTCV ~ a1*depression + NACCAGE + NACCSEX
+  GM ~ a2*depression + NACCAGE + NACCSEX
+  HIPPOCAMPUS ~ a3*depression + NACCAGE + NACCSEX
+  WMH ~ a4*depression + NACCAGE + NACCSEX
+  CEREBRALWHITEMATTER ~ a5*depression + NACCAGE + NACCSEX
+  
+  CEREBRUMTCV ~~ GM
+  CEREBRUMTCV ~~ CEREBRALWHITEMATTER
+  GM ~~ CEREBRALWHITEMATTER
+  GM ~~ HIPPOCAMPUS
+  HIPPOCAMPUS ~~ CEREBRALWHITEMATTER
+  HIPPOCAMPUS ~~ CEREBRUMTCV
+  
+  ################################
+  # 3. Paths to cognition
+  ################################
+
+  cognition ~ c_prime*depression +
+              b1*CEREBRUMTCV + b2*GM +
+              b3*HIPPOCAMPUS + b4*WMH +
+              b5*CEREBRALWHITEMATTER +
+              NACCAGE + NACCSEX
+
+
+  ################################
+  # 4. Indirect effects
+  ################################
+
+  ind_TCV := a1*b1
+  ind_GM := a2*b2
+  ind_HIP := a3*b3
+  ind_WMH := a4*b4
+  ind_TWM := a5*b5
+
+
+  ################################
+  # 5. Total indirect effect
+  ################################
+
+  total_indirect := ind_TCV + ind_GM +
+                    ind_HIP + ind_WMH +
+                    ind_TWM
+
+
+  ################################
+  # 6. Total effect
+  ################################
+
+  total_effect := c_prime + total_indirect
+
+'
+
+fit_dep <- cfa(dep_Model, data = data_merged_scaled, missing = "fiml", verbose = T, optim.method = "BFGS")
+summary(fit_dep, fit.measures = T, standardized = T)
+ 
+
+############################################################################################################################
+######################################################### ANXIETY ########################################################
+############################################################################################################################
+
+
+anx_Model <- '
+  ################################
+  # 1. Measurement models
+  ################################
+
+  cognition =~ DECCLCOG + NACCMOCAnew + DEMENTED
+  anxiety =~ NACCANXnew + ANXIETYnew
+
+  ################################
+  # 2. Paths from lifestyle
+  #    to the six mediators
+  ################################
+
+  CEREBRUMTCV ~ a1*anxiety + NACCAGE + NACCSEX
+  GM ~ a2*anxiety + NACCAGE + NACCSEX
+  HIPPOCAMPUS ~ a3*anxiety + NACCAGE + NACCSEX
+  WMH ~ a4*anxiety + NACCAGE + NACCSEX
+  CEREBRALWHITEMATTER ~ a5*anxiety + NACCAGE + NACCSEX
+  
+  CEREBRUMTCV ~~ GM
+  CEREBRUMTCV ~~ CEREBRALWHITEMATTER
+  GM ~~ CEREBRALWHITEMATTER
+  GM ~~ HIPPOCAMPUS
+  HIPPOCAMPUS ~~ CEREBRALWHITEMATTER
+  HIPPOCAMPUS ~~ CEREBRUMTCV
+  
+  ################################
+  # 3. Paths to cognition
+  ################################
+
+  cognition ~ c_prime*anxiety +
+              b1*CEREBRUMTCV + b2*GM +
+              b3*HIPPOCAMPUS + b4*WMH +
+              b5*CEREBRALWHITEMATTER +
+              NACCAGE + NACCSEX
+
+
+  ################################
+  # 4. Indirect effects
+  ################################
+
+  ind_TCV := a1*b1
+  ind_GM := a2*b2
+  ind_HIP := a3*b3
+  ind_WMH := a4*b4
+  ind_TWM := a5*b5
+
+
+  ################################
+  # 5. Total indirect effect
+  ################################
+
+  total_indirect := ind_TCV + ind_GM +
+                    ind_HIP + ind_WMH +
+                    ind_TWM
+
+
+  ################################
+  # 6. Total effect
+  ################################
+
+  total_effect := c_prime + total_indirect
+
+'
+
+fit_anx <- cfa(anx_Model, data = data_merged_scaled, missing = "fiml", verbose = T, optim.method = "BFGS")
+summary(fit_anx, fit.measures = T, standardized = T)
+
+
+############################################################################################################################
+######################################################### TBI ########################################################
+############################################################################################################################
+
+
+tbi_Model <- '
+  ################################
+  # 1. Measurement models
+  ################################
+
+  cognition =~ DECCLCOG + NACCMOCAnew + DEMENTED
+  tbi =~ NACCTBI + TBInew + TBIBRIEF + TBIEXTEN + TBIWOLOS
+
+  ################################
+  # 2. Paths from lifestyle
+  #    to the six mediators
+  ################################
+
+  CEREBRUMTCV ~ a1*tbi + NACCAGE + NACCSEX
+  GM ~ a2*tbi + NACCAGE + NACCSEX
+  HIPPOCAMPUS ~ a3*tbi + NACCAGE + NACCSEX
+  WMH ~ a4*tbi + NACCAGE + NACCSEX
+  CEREBRALWHITEMATTER ~ a5*tbi + NACCAGE + NACCSEX
+  
+  CEREBRUMTCV ~~ GM
+  CEREBRUMTCV ~~ CEREBRALWHITEMATTER
+  GM ~~ CEREBRALWHITEMATTER
+  GM ~~ HIPPOCAMPUS
+  HIPPOCAMPUS ~~ CEREBRALWHITEMATTER
+  HIPPOCAMPUS ~~ CEREBRUMTCV
+  NACCTBI ~~ 0*NACCTBI
+  
+  ################################
+  # 3. Paths to cognition
+  ################################
+
+  cognition ~ c_prime*tbi +
+              b1*CEREBRUMTCV + b2*GM +
+              b3*HIPPOCAMPUS + b4*WMH +
+              b5*CEREBRALWHITEMATTER +
+              NACCAGE + NACCSEX
+
+
+  ################################
+  # 4. Indirect effects
+  ################################
+
+  ind_TCV := a1*b1
+  ind_GM := a2*b2
+  ind_HIP := a3*b3
+  ind_WMH := a4*b4
+  ind_TWM := a5*b5
+
+
+  ################################
+  # 5. Total indirect effect
+  ################################
+
+  total_indirect := ind_TCV + ind_GM +
+                    ind_HIP + ind_WMH +
+                    ind_TWM
+
+
+  ################################
+  # 6. Total effect
+  ################################
+
+  total_effect := c_prime + total_indirect
+
+'
+
+fit_tbi <- cfa(tbi_Model, data = data_merged_scaled, missing = "fiml", verbose = T, optim.method = "BFGS")
+summary(fit_tbi, fit.measures = T, standardized = T)
+
+# fixing NACCTBI variance to zero to reduce negative variance
+
+############################################################################################################################
+######################################################### SLEEP ########################################################
+############################################################################################################################
+
+
+sleep_Model <- '
+  ################################
+  # 1. Measurement models
+  ################################
+
+  cognition =~ DECCLCOG + NACCMOCAnew + DEMENTED
+  sleep =~ SLEEPAP + RBDnew
+
+  ################################
+  # 2. Paths from lifestyle
+  #    to the six mediators
+  ################################
+
+  CEREBRUMTCV ~ a1*sleep + NACCAGE + NACCSEX
+  GM ~ a2*sleep + NACCAGE + NACCSEX
+  HIPPOCAMPUS ~ a3*sleep + NACCAGE + NACCSEX
+  WMH ~ a4*sleep + NACCAGE + NACCSEX
+  CEREBRALWHITEMATTER ~ a5*sleep + NACCAGE + NACCSEX
+  
+  CEREBRUMTCV ~~ GM
+  CEREBRUMTCV ~~ CEREBRALWHITEMATTER
+  GM ~~ CEREBRALWHITEMATTER
+  GM ~~ HIPPOCAMPUS
+  HIPPOCAMPUS ~~ CEREBRALWHITEMATTER
+  HIPPOCAMPUS ~~ CEREBRUMTCV
+  
+  ################################
+  # 3. Paths to cognition
+  ################################
+
+  cognition ~ c_prime*sleep +
+              b1*CEREBRUMTCV + b2*GM +
+              b3*HIPPOCAMPUS + b4*WMH +
+              b5*CEREBRALWHITEMATTER +
+              NACCAGE + NACCSEX
+
+
+  ################################
+  # 4. Indirect effects
+  ################################
+
+  ind_TCV := a1*b1
+  ind_GM := a2*b2
+  ind_HIP := a3*b3
+  ind_WMH := a4*b4
+  ind_TWM := a5*b5
+
+
+  ################################
+  # 5. Total indirect effect
+  ################################
+
+  total_indirect := ind_TCV + ind_GM +
+                    ind_HIP + ind_WMH +
+                    ind_TWM
+
+
+  ################################
+  # 6. Total effect
+  ################################
+
+  total_effect := c_prime + total_indirect
+
+'
+
+fit_sleep <- cfa(sleep_Model, data = data_merged_scaled, missing = "fiml", verbose = T, optim.method = "BFGS")
+summary(fit_sleep, fit.measures = T, standardized = T)
+
+
+############################################################################################################################
+######################################################### Diabetes ########################################################
+############################################################################################################################
+
+
+diab_Model <- '
+  ################################
+  # 1. Measurement models
+  ################################
+
+  cognition =~ DECCLCOG + NACCMOCAnew + DEMENTED
+
+  ################################
+  # 2. Paths from lifestyle
+  #    to the six mediators
+  ################################
+
+  CEREBRUMTCV ~ a1*DIABETESnew + NACCAGE + NACCSEX
+  GM ~ a2*DIABETESnew + NACCAGE + NACCSEX
+  HIPPOCAMPUS ~ a3*DIABETESnew + NACCAGE + NACCSEX
+  WMH ~ a4*DIABETESnew + NACCAGE + NACCSEX
+  CEREBRALWHITEMATTER ~ a5*DIABETESnew + NACCAGE + NACCSEX
+  
+  CEREBRUMTCV ~~ GM
+  CEREBRUMTCV ~~ CEREBRALWHITEMATTER
+  GM ~~ CEREBRALWHITEMATTER
+  GM ~~ HIPPOCAMPUS
+  HIPPOCAMPUS ~~ CEREBRALWHITEMATTER
+  HIPPOCAMPUS ~~ CEREBRUMTCV
+  
+  ################################
+  # 3. Paths to cognition
+  ################################
+
+  cognition ~ c_prime*DIABETESnew +
+              b1*CEREBRUMTCV + b2*GM +
+              b3*HIPPOCAMPUS + b4*WMH +
+              b5*CEREBRALWHITEMATTER +
+              NACCAGE + NACCSEX
+
+
+  ################################
+  # 4. Indirect effects
+  ################################
+
+  ind_TCV := a1*b1
+  ind_GM := a2*b2
+  ind_HIP := a3*b3
+  ind_WMH := a4*b4
+  ind_TWM := a5*b5
+
+
+  ################################
+  # 5. Total indirect effect
+  ################################
+
+  total_indirect := ind_TCV + ind_GM +
+                    ind_HIP + ind_WMH +
+                    ind_TWM
+
+
+  ################################
+  # 6. Total effect
+  ################################
+
+  total_effect := c_prime + total_indirect
+
+'
+
+fit_diab <- cfa(diab_Model, data = data_merged_scaled, missing = "fiml", verbose = T, optim.method = "BFGS")
+summary(fit_diab, fit.measures = T, standardized = T)
+
+
+############################################################################################################################
+######################################################### OBESITY ########################################################
+############################################################################################################################
+
+
+bmi_Model <- '
+  ################################
+  # 1. Measurement models
+  ################################
+
+  cognition =~ DECCLCOG + NACCMOCAnew + DEMENTED
+
+  ################################
+  # 2. Paths from lifestyle
+  #    to the six mediators
+  ################################
+
+  CEREBRUMTCV ~ a1*NACCBMI + NACCAGE + NACCSEX
+  GM ~ a2*NACCBMI + NACCAGE + NACCSEX
+  HIPPOCAMPUS ~ a3*NACCBMI + NACCAGE + NACCSEX
+  WMH ~ a4*NACCBMI + NACCAGE + NACCSEX
+  CEREBRALWHITEMATTER ~ a5*NACCBMI + NACCAGE + NACCSEX
+  
+  CEREBRUMTCV ~~ GM
+  CEREBRUMTCV ~~ CEREBRALWHITEMATTER
+  GM ~~ CEREBRALWHITEMATTER
+  GM ~~ HIPPOCAMPUS
+  HIPPOCAMPUS ~~ CEREBRALWHITEMATTER
+  HIPPOCAMPUS ~~ CEREBRUMTCV
+  
+  ################################
+  # 3. Paths to cognition
+  ################################
+
+  cognition ~ c_prime*NACCBMI +
+              b1*CEREBRUMTCV + b2*GM +
+              b3*HIPPOCAMPUS + b4*WMH +
+              b5*CEREBRALWHITEMATTER +
+              NACCAGE + NACCSEX
+
+
+  ################################
+  # 4. Indirect effects
+  ################################
+
+  ind_TCV := a1*b1
+  ind_GM := a2*b2
+  ind_HIP := a3*b3
+  ind_WMH := a4*b4
+  ind_TWM := a5*b5
+
+
+  ################################
+  # 5. Total indirect effect
+  ################################
+
+  total_indirect := ind_TCV + ind_GM +
+                    ind_HIP + ind_WMH +
+                    ind_TWM
+
+
+  ################################
+  # 6. Total effect
+  ################################
+
+  total_effect := c_prime + total_indirect
+
+'
+
+fit_bmi <- cfa(bmi_Model, data = data_merged_scaled, missing = "fiml", verbose = T, optim.method = "BFGS")
+summary(fit_bmi, fit.measures = T, standardized = T)
+
+
+############################################################################################################################
+######################################################### HEARING ########################################################
+############################################################################################################################
+
+
+hear_Model <- '
+  ################################
+  # 1. Measurement models
+  ################################
+
+  cognition =~ DECCLCOG + NACCMOCAnew + DEMENTED
+
+  ################################
+  # 2. Paths from lifestyle
+  #    to the six mediators
+  ################################
+
+  CEREBRUMTCV ~ a1*HEARINGnew + NACCAGE + NACCSEX
+  GM ~ a2*HEARINGnew + NACCAGE + NACCSEX
+  HIPPOCAMPUS ~ a3*HEARINGnew + NACCAGE + NACCSEX
+  WMH ~ a4*HEARINGnew + NACCAGE + NACCSEX
+  CEREBRALWHITEMATTER ~ a5*HEARINGnew + NACCAGE + NACCSEX
+  
+  CEREBRUMTCV ~~ GM
+  CEREBRUMTCV ~~ CEREBRALWHITEMATTER
+  GM ~~ CEREBRALWHITEMATTER
+  GM ~~ HIPPOCAMPUS
+  HIPPOCAMPUS ~~ CEREBRALWHITEMATTER
+  HIPPOCAMPUS ~~ CEREBRUMTCV
+  
+  ################################
+  # 3. Paths to cognition
+  ################################
+
+  cognition ~ c_prime*HEARINGnew +
+              b1*CEREBRUMTCV + b2*GM +
+              b3*HIPPOCAMPUS + b4*WMH +
+              b5*CEREBRALWHITEMATTER +
+              NACCAGE + NACCSEX
+
+
+  ################################
+  # 4. Indirect effects
+  ################################
+
+  ind_TCV := a1*b1
+  ind_GM := a2*b2
+  ind_HIP := a3*b3
+  ind_WMH := a4*b4
+  ind_TWM := a5*b5
+
+
+  ################################
+  # 5. Total indirect effect
+  ################################
+
+  total_indirect := ind_TCV + ind_GM +
+                    ind_HIP + ind_WMH +
+                    ind_TWM
+
+
+  ################################
+  # 6. Total effect
+  ################################
+
+  total_effect := c_prime + total_indirect
+
+'
+
+fit_hear <- cfa(hear_Model, data = data_merged_scaled, missing = "fiml", verbose = T, optim.method = "BFGS")
+summary(fit_hear, fit.measures = T, standardized = T)
+
+
+############################################################################################################################
+######################################################### VISION ########################################################
+############################################################################################################################
+
+
+vis_Model <- '
+  ################################
+  # 1. Measurement models
+  ################################
+
+  cognition =~ DECCLCOG + NACCMOCAnew + DEMENTED
+
+  ################################
+  # 2. Paths from lifestyle
+  #    to the six mediators
+  ################################
+
+  CEREBRUMTCV ~ a1*VISIONnew + NACCAGE + NACCSEX
+  GM ~ a2*VISIONnew + NACCAGE + NACCSEX
+  HIPPOCAMPUS ~ a3*VISIONnew + NACCAGE + NACCSEX
+  WMH ~ a4*VISIONnew + NACCAGE + NACCSEX
+  CEREBRALWHITEMATTER ~ a5*VISIONnew + NACCAGE + NACCSEX
+  
+  CEREBRUMTCV ~~ GM
+  CEREBRUMTCV ~~ CEREBRALWHITEMATTER
+  GM ~~ CEREBRALWHITEMATTER
+  GM ~~ HIPPOCAMPUS
+  HIPPOCAMPUS ~~ CEREBRALWHITEMATTER
+  HIPPOCAMPUS ~~ CEREBRUMTCV
+  
+  ################################
+  # 3. Paths to cognition
+  ################################
+
+  cognition ~ c_prime*VISIONnew +
+              b1*CEREBRUMTCV + b2*GM +
+              b3*HIPPOCAMPUS + b4*WMH +
+              b5*CEREBRALWHITEMATTER +
+              NACCAGE + NACCSEX
+
+
+  ################################
+  # 4. Indirect effects
+  ################################
+
+  ind_TCV := a1*b1
+  ind_GM := a2*b2
+  ind_HIP := a3*b3
+  ind_WMH := a4*b4
+  ind_TWM := a5*b5
+
+
+  ################################
+  # 5. Total indirect effect
+  ################################
+
+  total_indirect := ind_TCV + ind_GM +
+                    ind_HIP + ind_WMH +
+                    ind_TWM
+
+
+  ################################
+  # 6. Total effect
+  ################################
+
+  total_effect := c_prime + total_indirect
+
+'
+
+fit_vis <- cfa(vis_Model, data = data_merged_scaled, missing = "fiml", verbose = T, optim.method = "BFGS")
+summary(fit_vis, fit.measures = T, standardized = T)
+
+############################################################################################################################
+######################################################### OUTPUT Tables ########################################################
+############################################################################################################################
+fit_bp; fit_ch; fit_edu; fit_vis; fit_hear; fit_bmi; fit_si; fit_sleep; fit_dep; fit_anx; fit_diab; fit_alc; fit_smk; fit_tbi #14
+
+
+####################################
+# 1. INSERT YOUR MODELS HERE
+####################################
+
+models <- list(
+  Education = fit_edu,
+  TBI = fit_tbi,
+  BP = fit_bp,
+  Cholesterol = fit_ch,
+  Vision = fit_vis,
+  Hearing = fit_hear,
+  BMI = fit_bmi,
+  Social = fit_si,
+  Sleep = fit_sleep,
+  Depression = fit_dep,
+  Anxiety = fit_anx,
+  Diabetes = fit_diab,
+  Alcohol = fit_alc,
+  Smoking = fit_smk
+  
+  # Add more models here
+)
+
+####################################
+# 2. LOOP THROUGH ALL MODELS
+####################################
+
+for (model_name in names(models)) {
+  
+  fit <- models[[model_name]]
+  
+  ####################################
+  # TABLE 1: Parameter estimates
+  ####################################
+  
+  parameter_table <- parameterEstimates(
+    fit, standardized = TRUE
+  ) %>%
+    filter(op %in% c("~", ":=", "~~")) %>%
+    mutate(Significance = case_when(
+      pvalue < 0.001 ~ "***",
+      pvalue < 0.01 ~ "**",
+      pvalue < 0.05 ~ "*",
+      TRUE ~ ""
+    )) %>%
+    select(
+      Predictor = lhs,
+      Relationship = op,
+      Outcome = rhs,
+      Estimate = est,
+      'Std. Est.' = std.all,
+      SE = se,
+      z = z,
+      'p-value' = pvalue,
+      Significance
+    )
+  
+  table1 <- kable(
+    parameter_table,
+    format = "html",
+    digits = 3,
+    caption = paste(model_name, "- SEM Parameter Estimates")
+  ) %>%
+    kable_styling(
+      bootstrap_options = c("striped", "hover", "condensed"),
+      full_width = FALSE,
+      position = "center"
+    )
+  
+  ####################################
+  # TABLE 2: Model fit indices
+  ####################################
+  
+  fit_table <- data.frame(
+    Measure = c(
+      "Chi-square",
+      "Degrees of Freedom",
+      "p-value",
+      "CFI (robust)",
+      "TLI (robust)",
+      "SRMR",
+      "RMSEA (robust)",
+      "BIC"
+    ),
+    Value = round(
+      fitMeasures(
+        fit,
+        c("chisq", "df", "pvalue",
+          "cfi.robust", "tli.robust",
+          "srmr", "rmsea.robust", "bic")
+      ),
+      3
+    )
+  )
+  
+  table2 <- kable(
+    fit_table,
+    format = "html",
+    caption = paste(model_name, "- SEM Model Fit Indices")
+  ) %>%
+    kable_styling(
+      bootstrap_options = c("striped", "hover", "condensed"),
+      full_width = FALSE,
+      position = "center"
+    )
+  
+  ####################################
+  # 3. DISPLAY BOTH TABLES
+  ####################################
+  
+  print(table1)
+  print(table2)
+}
+
+
+
+library(semPlot)
+
+semPaths(
+  fit_edu,
+  what = "std",
+  whatLabels = "std",
+  style = "lisrel",
+  layout = "tree2",
+  rotation = 2,
+  color = "white",
+  border.color = "black",
+  edge.color = "black",
+  label.color = "black",
+  posCol = "black",
+  negCol = "black",
+  residuals = FALSE,
+  intercepts = FALSE,
+  edge.label.cex = 0.8,
+  sizeMan = 6,
+  sizeLat = 8
+)
